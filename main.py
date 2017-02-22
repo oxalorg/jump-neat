@@ -1,5 +1,7 @@
 import pyglet
 import math
+import sys
+import neat
 import random
 from pyglet.window import key
 from game import *
@@ -10,21 +12,45 @@ main_batch = pyglet.graphics.Batch()
 
 # Define score and ground
 score_label = pyglet.text.Label(text="Score: 0", x=20, y=300)
+generation_label = pyglet.text.Label(text="Generation: 0", x=20, y=400)
+max_fitness_label = pyglet.text.Label(text="Max Fitness: 0", x=20, y=500)
 ground_text = '-' * 1000
 ground = pyglet.text.Label(text=ground_text, x=0, y=150, anchor_y='center')
 
 PLAYER_SIZE = 100
-score = 0
+score = 1
 game_objects = []
 gamer = None
 blocks = []
 
+def fitness(pop):
+    global score
+    for g in pop:
+        g['fitness'] = score
+
+nn = neat.main(fitness, gen_size=99999, pop_size=100)
+fittest = None
+fittest_act = None
+generation = 0
+max_fitness = 1
+
 
 def init():
-    global score
+    global fittest, fittest_act, max_fitness
+    # try:
+    generation += 1
+    fittest = next(nn)
+    max_fitness = max(max_fitness, fittest['fitness'])
+    # except:
+    #     sys.exit()
+    fittest_act = neat.generate_network(fittest)
+
+    global score, generation, max_fitness
     # Set score to 0
     score = 0
     score_label.text = "Score: {}".format(score)
+    generation_label.text = "Generation:: {}".format(generation)
+    max_fitness_label.text = "Max Fitness:: {}".format(max_fitness)
 
     reset_game()
 
@@ -56,7 +82,7 @@ def reset_game():
 @window.event
 def on_key_press(symbol, modifiers):
     if symbol == key.UP and gamer.y == defaults.GROUND_HT:
-        gamer.velocity_y += 150
+        gamer.jump = True
 
 
 @window.event
@@ -71,15 +97,26 @@ def on_draw():
     window.clear()
     ground.draw()
     score_label.draw()
+    generation_label.draw()
+    max_fitness_label.draw()
     main_batch.draw()
 
 
 def update(dt):
+    dt = 3*dt
     # print([block.x for block in blocks])
     global blocks
 
     if len(blocks) < defaults.MAX_BLOCKS:
         blocks.extend(load.gen_blocks(4, blocks[-1].x, batch=main_batch))
+
+    blocks_ahead = filter(lambda b: b.x > gamer.x, blocks)
+    nn_in = [0, 0]
+    nn_in[0] = min(blocks_ahead, key=lambda b: b.x).x
+    nn_in[1] = 1
+    if fittest_act(nn_in)[0] > 0.5:
+        if gamer.y == defaults.GROUND_HT:
+            gamer.jump = True
 
     gamer.update(dt)
 
