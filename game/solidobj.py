@@ -13,15 +13,18 @@ class SolidObj(pyglet.sprite.Sprite):
         super(SolidObj, self).__init__(*args, **kwargs)
 
         self.velocity_x, self.velocity_y = 0.0, 0.0
+        self.acc_x, self.acc_y = 0.0, 0.0
         self.remove = False
 
     def update(self, dt):
         self.x += self.velocity_x * dt
         self.y += self.velocity_y * dt
+        self.velocity_y += self.acc_y * dt
 
         if self.y > defaults.GROUND_HT:
-            self.velocity_y -= 3
+            self.acc_y = defaults.GRAVITY
         else:
+            self.acc_y = 0
             self.velocity_y = 0
             self.y = defaults.GROUND_HT
 
