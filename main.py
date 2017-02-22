@@ -12,38 +12,38 @@ main_batch = pyglet.graphics.Batch()
 
 # Define score and ground
 score_label = pyglet.text.Label(text="Score: 0", x=20, y=300)
-generation_label = pyglet.text.Label(text="Generation: 0", x=20, y=400)
-max_fitness_label = pyglet.text.Label(text="Max Fitness: 0", x=20, y=500)
+generation_label = pyglet.text.Label(text="Generation: 0", x=20, y=320)
+max_fitness_label = pyglet.text.Label(text="Max Fitness: 0", x=20, y=340)
+avg_fitness = pyglet.text.Label(text="Avg Fitness: 0", x=20, y=340)
+alive_label = pyglet.text.Label(text="Alive gamers: 0", x=20, y=360)
 ground_text = '-' * 1000
 ground = pyglet.text.Label(text=ground_text, x=0, y=150, anchor_y='center')
 
 PLAYER_SIZE = 100
 score = 1
 game_objects = []
-gamer = None
+gamers = []
 blocks = []
 
 def fitness(pop):
     global score
-    for g in pop:
-        g['fitness'] = score
+    for genome, gamer in zip(pop, gamers):
+        genome['fitness'] = gamer.genome['fitness']
 
-nn = neat.main(fitness, gen_size=99999, pop_size=100)
-fittest = None
-fittest_act = None
+
+nn = neat.main(fitness, gen_size=99999, pop_size=200)
+pop = []
 generation = 0
 max_fitness = 1
+avg_fitness = 1
+alive_gamers = 0
 
-
-def init():
-    global fittest, fittest_act, max_fitness
-    # try:
+def restart():
+    global fittest, fittest_act, max_fitness, pop, avg_fitness
     generation += 1
-    fittest = next(nn)
-    max_fitness = max(max_fitness, fittest['fitness'])
-    # except:
-    #     sys.exit()
-    fittest_act = neat.generate_network(fittest)
+    pop = next(nn)
+    max_fitness = max(max_fitness, score)
+    avg_fitness = sum(x['fitness'] for x in pop)/len(pop)
 
     global score, generation, max_fitness
     # Set score to 0
@@ -52,31 +52,30 @@ def init():
     generation_label.text = "Generation:: {}".format(generation)
     max_fitness_label.text = "Max Fitness:: {}".format(max_fitness)
 
-    reset_game()
+    global game_objects, gamers, blocks
 
-
-def reset_game():
-    global game_objects, gamer, blocks
-
-    # Delete all blocks
+    # Delete game objects
     for block in blocks:
         block.delete()
 
-    # Delete gamer
-    if gamer:
+    for gamer in gamers:
         gamer.delete()
-        gamer = None
 
-    # Initialize a single Player
-    gamer = player.Player(x=100, y=150, batch=main_batch)
-    gamer.scale = 0.25
-    gamer.y += float(gamer.scale * PLAYER_SIZE / 2)
+    # Initialize gamers of the new generation
+    gamers = []
+    for genome in pop:
+        gamer = player.Player(x=100, y=150, batch=main_batch)
+        gamer.scale = 0.25
+        gamer.y += float(gamer.scale * PLAYER_SIZE / 2)
+        gamer.genome = genome
+        gamer.activate = neat.generate_network(genome)
+        gamers.append(gamer)
 
     # Initialize 3 starting blocks
     blocks = load.gen_blocks(3, batch=main_batch)
 
     # Store all objects
-    game_objects = [gamer] + blocks
+    game_objects = gamers + blocks
 
 
 @window.event
@@ -99,10 +98,12 @@ def on_draw():
     score_label.draw()
     generation_label.draw()
     max_fitness_label.draw()
+    alive_label.draw()
     main_batch.draw()
 
 
 def update(dt):
+    alive_label.text = "Alive gamers: {}".format(len([x for x in gamers if x.alive]))
     dt = 3*dt
     # print([block.x for block in blocks])
     global blocks
@@ -110,29 +111,38 @@ def update(dt):
     if len(blocks) < defaults.MAX_BLOCKS:
         blocks.extend(load.gen_blocks(4, blocks[-1].x, batch=main_batch))
 
-    blocks_ahead = filter(lambda b: b.x > gamer.x, blocks)
+    blocks_ahead = filter(lambda b: b.x > 100, blocks)
+    closest_block = min(blocks_ahead, key=lambda b: b.x).x
     nn_in = [0, 0]
-    nn_in[0] = min(blocks_ahead, key=lambda b: b.x).x
+    nn_in[0] = closest_block
     nn_in[1] = 1
-    if fittest_act(nn_in)[0] > 0.5:
-        if gamer.y == defaults.GROUND_HT:
-            gamer.jump = True
-
-    gamer.update(dt)
+    for gamer in gamers:
+        if gamer.alive:
+            if gamer.activate(nn_in)[0] > 0.5:
+                if gamer.y == defaults.GROUND_HT:
+                    gamer.jump = True
+        gamer.update(dt)
 
     # run job to update blocks and clear dead blocks
     removal = []
     for block in blocks:
         block.update(dt)
-        if gamer.collides_with(block):
-            # pyglet.clock.schedule_interval(restart, 1 / 120.0)
-            pyglet.clock.unschedule(update)
-            print("Dead. Restarting..")
-            restart()
-            return
+        for gamer in gamers:
+            if gamer.alive:
+                if gamer.collides_with(block):
+                    gamer.genome['fitness'] = score
+                    gamer.alive = False
+                    gamer.y = -99999
 
         if block.remove:
             removal.append(block)
+
+    if len([g for g in gamers if g.alive]) == 0:
+        # if no gamers are alive, start next generation
+        pyglet.clock.unschedule(update)
+        print("Dead. Restarting..")
+        init()
+        return
 
     for block in removal:
         blocks.remove(block)
@@ -143,12 +153,11 @@ def update(dt):
     score_label.text = "Score: {}".format(int(score))
 
 
-def restart():
-    init()
+def init():
+    restart()
     pyglet.clock.schedule_interval(update, 1 / 120.0)
 
 
 if __name__ == '__main__':
     init()
-    pyglet.clock.schedule_interval(update, 1 / 120.0)
     pyglet.app.run()
