@@ -17,7 +17,10 @@ max_fitness_label = pyglet.text.Label(text="Max Fitness: 0", x=20, y=340)
 avg_fitness = pyglet.text.Label(text="Avg Fitness: 0", x=20, y=340)
 alive_label = pyglet.text.Label(text="Alive gamers: 0", x=20, y=360)
 ground_text = '-' * 1000
-ground = pyglet.text.Label(text=ground_text, x=0, y=150, anchor_y='center')
+ground = pyglet.text.Label(text=ground_text, x=0, y=defaults.GROUND_HT, anchor_y='center')
+bg = pyglet.sprite.Sprite(resources.background_image)
+bg.x = 0
+bg.y = 0
 
 PLAYER_SIZE = 100
 score = 1
@@ -30,8 +33,10 @@ def fitness(pop):
     for genome, gamer in zip(pop, gamers):
         genome['fitness'] = gamer.genome['fitness']
 
-
-nn = neat.main(fitness, gen_size=99999, pop_size=200)
+save = None
+if len(sys.argv) > 1:
+    save=True
+nn = neat.main(fitness, gen_size=99999, pop_size=200, save=save)
 pop = []
 generation = 0
 max_fitness = 1
@@ -64,7 +69,7 @@ def restart():
     # Initialize gamers of the new generation
     gamers = []
     for genome in pop:
-        gamer = player.Player(x=100, y=150, batch=main_batch)
+        gamer = player.Player(x=100, y=defaults.GROUND_HT, batch=main_batch)
         gamer.scale = 0.25
         gamer.y += float(gamer.scale * PLAYER_SIZE / 2)
         gamer.genome = genome
@@ -94,6 +99,7 @@ def on_key_release(symbol, modifiers):
 @window.event
 def on_draw():
     window.clear()
+    bg.draw()
     ground.draw()
     score_label.draw()
     generation_label.draw()
