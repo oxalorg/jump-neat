@@ -10,8 +10,10 @@ def center_image(image):
 pyglet.resource.path = ['resources']
 pyglet.resource.reindex()
 
-player_image = pyglet.resource.image("player.png")
+player_image = pyglet.resource.image("mario.png")
 center_image(player_image)
 
-block_image = pyglet.resource.image("block.png")
+block_image = pyglet.resource.image("goomba.png")
 center_image(block_image)
+
+background_image = pyglet.resource.image("bg.jpg")

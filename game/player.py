@@ -8,7 +8,7 @@ class Player(SolidObj):
         super(Player, self).__init__(resources.player_image, *args, **kwargs)
         self.alive = True
         self.jump = False
-        self.jump_speed = 150
+        self.jump_speed = defaults.JUMP_SPEED
         self.acc_y = 0.0
         self.genome = None
         self.activate = None
