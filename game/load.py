@@ -10,7 +10,11 @@ def distance(point_1=(0, 0), point_2=(0, 0)):
 def gen_blocks(num_icons, start_x=100, batch=None):
     blocks = []
     for i in range(num_icons):
-        x = start_x + random.randint(40, 150) * (i + 1) + 100 * (i + 1)
+        # x = start_x + random.randint(40, 150) * (i + 1) + 100 * (i + 1)
+        try:
+            x = blocks[-1].x + random.randint(90, 300)
+        except IndexError:
+            x = start_x + random.randint(200, 400)
         new_sprite = block.Block(x=x, y=150, batch=batch)
         new_sprite.scale = 0.2
         blocks.append(new_sprite)

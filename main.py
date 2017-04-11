@@ -85,8 +85,10 @@ def restart():
 
 @window.event
 def on_key_press(symbol, modifiers):
-    if symbol == key.UP and gamer.y == defaults.GROUND_HT:
-        gamer.jump = True
+    if symbol == key.UP:
+        for gamer in gamers:
+            if gamer.y == defaults.GROUND_HT and gamer.alive:
+                gamer.jump = True
 
 
 @window.event
@@ -110,18 +112,34 @@ def on_draw():
 
 def update(dt):
     alive_label.text = "Alive gamers: {}".format(len([x for x in gamers if x.alive]))
-    dt = 3*dt
+    dt = 10*dt
     # print([block.x for block in blocks])
     global blocks
 
     if len(blocks) < defaults.MAX_BLOCKS:
-        blocks.extend(load.gen_blocks(4, blocks[-1].x, batch=main_batch))
+        try:
+            x_spawn_dist = 200 if blocks[-1].x < 200 else blocks[-1].x
+            blocks.extend(load.gen_blocks(4, blocks[-1].x, batch=main_batch))
+        except IndexError:
+            blocks = load.gen_blocks(4, 200, batch=main_batch)
 
     blocks_ahead = filter(lambda b: b.x > 100, blocks)
-    closest_block = min(blocks_ahead, key=lambda b: b.x).x
+    sorted_blocks = sorted(blocks_ahead, key=lambda b: b.x)
+    try:
+        closest_block = sorted_blocks[0].x
+    except:
+        closest_block = 0
+    try:
+        second_closest_block = sorted_blocks[1].x
+    except:
+        second_closest_block = 0
+    try:
+        third_closest_block = sorted_blocks[2].x
+    except:
+        third_closest_block = 0
+    nn_in = [0, 0, 0, 0]
     nn_in = [0, 0]
-    nn_in[0] = closest_block
-    nn_in[1] = 1
+    nn_in = closest_block, 1
     for gamer in gamers:
         if gamer.alive:
             if gamer.activate(nn_in)[0] > 0.5:
