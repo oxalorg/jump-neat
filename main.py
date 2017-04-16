@@ -44,13 +44,13 @@ avg_fitness = 1
 alive_gamers = 0
 
 def restart():
-    global fittest, fittest_act, max_fitness, pop, avg_fitness
+    global fittest, fittest_act, max_fitness, pop, avg_fitness, score
+    global generation, max_fitness
     generation += 1
     pop = next(nn)
     max_fitness = max(max_fitness, score)
     avg_fitness = sum(x['fitness'] for x in pop)/len(pop)
 
-    global score, generation, max_fitness
     # Set score to 0
     score = 0
     score_label.text = "Score: {}".format(score)
@@ -111,6 +111,7 @@ def on_draw():
 
 
 def update(dt):
+    global score
     alive_label.text = "Alive gamers: {}".format(len([x for x in gamers if x.alive]))
     dt = 10*dt
     # print([block.x for block in blocks])
@@ -172,7 +173,6 @@ def update(dt):
         blocks.remove(block)
         block.delete()
 
-    global score
     score += 10 * dt
     score_label.text = "Score: {}".format(int(score))
 
